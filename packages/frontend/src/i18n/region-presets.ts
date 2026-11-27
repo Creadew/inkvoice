@@ -14,6 +14,14 @@ export interface RegionPreset {
 
 export const REGION_PRESETS: RegionPreset[] = [
   {
+    country: "LK",
+    label: "Sri Lanka",
+    currency: "LKR",
+    locale: "en-LK",
+    date_format: "dd/MM/yyyy",
+    default_tax: { name: "VAT", rate: 18 },
+  },
+  {
     country: "TR",
     label: "Türkiye",
     currency: "TRY",
@@ -92,7 +100,13 @@ export const REGION_PRESETS: RegionPreset[] = [
     date_format: "dd/MM/yyyy",
     default_tax: { name: "GST", rate: 10 },
   },
-  { country: "CA", label: "Canada", currency: "CAD", locale: "en-CA", date_format: "yyyy-MM-dd" },
+  {
+    country: "CA",
+    label: "Canada",
+    currency: "CAD",
+    locale: "en-CA",
+    date_format: "yyyy-MM-dd",
+  },
   {
     country: "CH",
     label: "Schweiz",

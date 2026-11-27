@@ -23,3 +23,4 @@ internal/
 /samples/
 /reports/
 /einvoice-samples/
+.env.local
