@@ -447,6 +447,8 @@ ENABLE_HSTS=false                    # Enable HSTS header
 RATE_LIMIT_ENABLED=true              # Enable login rate limiting
 RATE_LIMIT_MAX_ATTEMPTS=5            # Max failed login attempts
 RATE_LIMIT_WINDOW=900                # Rate limit window in seconds
+MFA_REQUIRED=true                    # Authenticator-app (TOTP) code on every password sign-in;
+                                     # set up on first sign-in. Always off in DEMO_MODE.
 
 # Optional
 DEMO_MODE=false                      # Enable demo mode with periodic resets; also defaults
