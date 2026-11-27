@@ -300,8 +300,31 @@ describe("schema migration runner", () => {
     ).toThrow();
   });
 
-  test("migrations reach version 35", () => {
-    expect(LATEST_MIGRATION_VERSION).toBe(35);
+  test("migrations reach version 36", () => {
+    expect(LATEST_MIGRATION_VERSION).toBe(36);
+  });
+
+  test("version 36 adds the authenticator columns to an existing user", () => {
+    runWith(db, () => runMigrations());
+    db.exec("DELETE FROM schema_migrations WHERE version >= 36");
+    db.exec("ALTER TABLE users DROP COLUMN totp_secret");
+    db.exec("ALTER TABLE users DROP COLUMN totp_enabled_at");
+    db.exec("ALTER TABLE users DROP COLUMN totp_last_step");
+    db.run("INSERT INTO users (id, username, password_hash) VALUES ('u36', 'pre-mfa', 'x')");
+
+    runWith(db, () => runMigrations());
+
+    const row = db
+      .query(
+        "SELECT username, totp_secret, totp_enabled_at, totp_last_step FROM users WHERE id = 'u36'",
+      )
+      .get() as Record<string, string | null>;
+    expect(row).toEqual({
+      username: "pre-mfa",
+      totp_secret: null,
+      totp_enabled_at: null,
+      totp_last_step: null,
+    });
   });
 
   test("version 35 adds the service date columns to an existing invoice", () => {

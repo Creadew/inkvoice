@@ -21,6 +21,8 @@ process.env.ADMIN_USER = "admin";
 process.env.ADMIN_PASS = "sample-pass-123456";
 process.env.JWT_SECRET = "sample-secret-key-that-is-at-least-32-chars";
 process.env.RATE_LIMIT_ENABLED = "false";
+// A throwaway database: sign in with the password alone.
+process.env.MFA_REQUIRED = "false";
 process.env.LOG_LEVEL = "error";
 
 const { resetEnvCache } = await import("../packages/backend/src/utils/env");

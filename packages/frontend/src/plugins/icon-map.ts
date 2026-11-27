@@ -3,11 +3,20 @@
 // names dynamically would ship the whole set to the client for one lookup,
 // so this map is curated: add an entry when a published plugin uses a new
 // icon. Unknown names fall back to Puzzle.
-import { Clock, FileCheck, type LucideIcon, Network, Puzzle, Receipt } from "lucide-react";
+import {
+  Clock,
+  FileCheck,
+  type LucideIcon,
+  MessageSquare,
+  Network,
+  Puzzle,
+  Receipt,
+} from "lucide-react";
 
 const ICONS: Record<string, LucideIcon> = {
   Clock,
   FileCheck,
+  MessageSquare,
   Network,
   Receipt,
 };
