@@ -269,6 +269,9 @@ export default function InvoiceForm({ onSave }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  // New invoices start in the workspace currency; a customer's own currency
+  // still overrides it once picked.
+  const defaultCurrency = useSettingsStore((s) => s.settings.currency) || "USD";
 
   const [form, setForm] = useState({
     customer_id: "",
@@ -281,7 +284,7 @@ export default function InvoiceForm({ onSave }: Props) {
     service_period_end: "",
     payment_terms: "",
     notes: "",
-    currency: "USD",
+    currency: defaultCurrency,
     exchange_rate: 1,
     locale: "",
     discount_type: "" as string,

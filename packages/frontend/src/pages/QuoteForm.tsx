@@ -34,6 +34,7 @@ import { todayIso } from "@/lib/date";
 import { formatApiError } from "@/lib/format-api-error";
 import { markRowHighlight } from "@/lib/highlight-row";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/settings.store";
 
 interface LineItem {
   _key: string;
@@ -190,7 +191,8 @@ export default function QuoteForm() {
   const [customerId, setCustomerId] = useState("");
   const [issueDate, setIssueDate] = useState(todayIso());
   const [validUntil, setValidUntil] = useState("");
-  const [currency, setCurrency] = useState("USD");
+  const defaultCurrency = useSettingsStore((s) => s.settings.currency) || "USD";
+  const [currency, setCurrency] = useState(defaultCurrency);
   const [locale, setLocale] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([

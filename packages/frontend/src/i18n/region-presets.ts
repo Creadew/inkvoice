@@ -10,6 +10,7 @@ export interface RegionPreset {
   locale: string; // BCP-47
   date_format: string; // settings.date_format value
   default_tax?: { name: string; rate: number };
+  fiscal_year_start_month?: number; // 1-12, when the tax year isn't the calendar year
 }
 
 export const REGION_PRESETS: RegionPreset[] = [
@@ -20,6 +21,7 @@ export const REGION_PRESETS: RegionPreset[] = [
     locale: "en-LK",
     date_format: "dd/MM/yyyy",
     default_tax: { name: "VAT", rate: 18 },
+    fiscal_year_start_month: 4, // Year of assessment runs 1 April - 31 March
   },
   {
     country: "TR",

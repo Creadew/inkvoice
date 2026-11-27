@@ -60,7 +60,14 @@ export default function OnboardingWizard() {
       if (companyName) settingsUpdate.company_name = companyName;
       // The business country (e-invoices need it); keep one set earlier.
       if (country && !initialSettings.company_country) settingsUpdate.company_country = country;
-      if (currency) settingsUpdate.currency = currency;
+      // Reports and the dashboard total in base_currency, which is seeded as
+      // USD; a fresh workspace has no documents yet, so align it here too.
+      if (currency) {
+        settingsUpdate.currency = currency;
+        settingsUpdate.base_currency = currency;
+      }
+      const fiscalStart = findPresetByCountry(country)?.fiscal_year_start_month;
+      if (fiscalStart) settingsUpdate.fiscal_year_start_month = String(fiscalStart);
       if (locale) settingsUpdate.locale = locale;
       if (dateFormat) settingsUpdate.date_format = dateFormat;
       await api.updateSettings(settingsUpdate);
