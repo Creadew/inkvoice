@@ -307,7 +307,7 @@ describe("order documents", () => {
     });
     expect(doc.items.map((i) => [i.description, i.quantity, i.unit_price])).toEqual([
       [
-        "Business Website — Up to 12 pages · Blog section. Includes: Web hosting – Business (acme.lk) (first year free), Logo design",
+        "Business Website — Up to 12 pages · Blog section. Includes: Web hosting – Business for acme.lk (first year free), Logo design",
         1,
         95000,
       ],
@@ -317,7 +317,7 @@ describe("order documents", () => {
     ]);
     expect(doc.items.map((i) => i.sort_order)).toEqual([0, 1, 2, 3]);
     expect(doc.recurring_summary).toBe(
-      "Recurring charges: Web hosting – Business (acme.lk): free for the first year, then LKR 24000.00 per year; Social media management: LKR 35000.00 per month.",
+      "Recurring charges: Web hosting – Business for acme.lk: free for the first year, then LKR 24000.00 per year; Social media management: LKR 35000.00 per month.",
     );
   });
 
@@ -606,7 +606,7 @@ describe("renewal billing", () => {
       total: 29500,
     });
     expect(invoice.items.map((i) => [i.description, i.unit])).toEqual([
-      ["Domain renewal – client.lk (2026-12-10 – 2027-12-09)", "year"],
+      ["Domain renewal for client.lk (2026-12-10 – 2027-12-09)", "year"],
       ["Web hosting (2026-12-14 – 2027-12-13)", "year"],
     ]);
     expect(getSubscription(domain.id)!.next_billing_date).toBe("2027-12-10");
@@ -662,7 +662,7 @@ describe("renewal billing", () => {
     const res = await billNow(s.id, TODAY);
     if (!res.ok) throw new Error(res.error);
     expect(getInvoice(res.data.invoice_id)!.items[0].description).toBe(
-      "Domain renewal – client.lk (2027-06-01 – 2028-05-31)",
+      "Domain renewal for client.lk (2027-06-01 – 2028-05-31)",
     );
     expect(getSubscription(s.id)!.next_billing_date).toBe("2028-06-01");
     expect(getHistory(s.id)).toHaveLength(1);

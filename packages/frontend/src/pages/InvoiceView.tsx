@@ -655,7 +655,7 @@ export default function InvoiceView({ onBack }: Props) {
             <TableBody>
               {invoice.items?.map((item: any) => (
                 <TableRow key={item.id}>
-                  <TableCell>{item.description}</TableCell>
+                  <TableCell className="min-w-64 whitespace-normal">{item.description}</TableCell>
                   <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
                   <TableCell className="text-muted-foreground capitalize">{item.unit}</TableCell>
                   <TableCell className="text-right tabular-nums">

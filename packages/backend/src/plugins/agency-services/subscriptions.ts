@@ -534,7 +534,7 @@ export function renewalDescription(
   period: DuePeriod,
   date: (iso: string) => string,
 ): string {
-  const label = sub.reference ? `${sub.name} – ${sub.reference}` : sub.name;
+  const label = sub.reference ? `${sub.name} for ${sub.reference}` : sub.name;
   return `${label} (${date(period.start)} – ${date(period.end)})`;
 }
 

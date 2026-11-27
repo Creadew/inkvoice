@@ -207,7 +207,7 @@ export function buildDocument(lines: OrderLine[], opts: DocumentOptions): BuiltD
     const isRecurring = line.billing === "recurring";
     const unit = line.interval_unit as IntervalUnit;
     const free = isRecurring && line.free_months > 0;
-    const label = line.reference ? `${line.name} (${line.reference})` : line.name;
+    const label = line.reference ? `${line.name} for ${line.reference}` : line.name;
     const base = {
       product_id: line.product_id,
       quantity: line.quantity,
@@ -248,7 +248,7 @@ export function buildDocument(lines: OrderLine[], opts: DocumentOptions): BuiltD
 
     let description = line.description;
     if (isRecurring) {
-      const ref = line.reference ? ` – ${line.reference}` : "";
+      const ref = line.reference ? ` for ${line.reference}` : "";
       const anchor = dayOfMonth(opts.startDate);
       const when =
         opts.mode === "invoice"
