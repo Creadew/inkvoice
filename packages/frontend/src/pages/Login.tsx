@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
+import { MfaStep } from "@/components/auth/MfaStep";
 import { InkvoiceLogo } from "@/components/InkvoiceLogo";
 import { Slot } from "@/components/layout/slot-registry";
 import { FormField } from "@/components/shared/FormField";
@@ -10,12 +11,13 @@ import { Input } from "@/components/ui/input";
 import { required, useFormValidation } from "@/hooks/use-form-validation";
 import { useTranslation } from "@/i18n";
 import { formatApiError } from "@/lib/format-api-error";
-import { useAuthStore } from "@/stores/auth.store";
+import { type MfaChallenge, useAuthStore } from "@/stores/auth.store";
 
 export default function Login() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mfa, setMfa] = useState<MfaChallenge | null>(null);
   const [demo, setDemo] = useState<{ username: string; password: string } | null>(null);
   const [sso, setSso] = useState<{ enabled: boolean; providerName: string | null } | null>(null);
   const OIDC_ERROR_CODES = new Set([
@@ -80,8 +82,9 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await login(form.username, form.password);
-      navigate("/");
+      const challenge = await login(form.username, form.password);
+      if (challenge) setMfa(challenge);
+      else navigate("/");
     } catch (err: unknown) {
       setError(formatApiError(err, t));
     } finally {
@@ -102,86 +105,111 @@ export default function Login() {
           <div className="flex justify-center mb-4">
             <InkvoiceLogo className="h-16" />
           </div>
-          <CardTitle className="text-xl">{t("auth.welcome_back")}</CardTitle>
-          <CardDescription>{t("auth.sign_in_to")}</CardDescription>
+          <CardTitle className="text-xl">
+            {mfa
+              ? t(mfa.step === "setup" ? "auth.mfa_setup_title" : "auth.mfa_verify_title")
+              : t("auth.welcome_back")}
+          </CardTitle>
+          <CardDescription>
+            {mfa
+              ? t(
+                  mfa.step === "setup"
+                    ? "auth.mfa_setup_description"
+                    : "auth.mfa_verify_description",
+                )
+              : t("auth.sign_in_to")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {sso?.enabled && (
+          {mfa ? (
+            <MfaStep
+              challenge={mfa}
+              onCancel={(message) => {
+                setMfa(null);
+                setForm((f) => ({ ...f, password: "" }));
+                setError(message ?? "");
+              }}
+            />
+          ) : (
             <>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  window.location.href = "/api/v1/auth/oidc/start";
-                }}
-              >
-                {sso.providerName
-                  ? t("auth.sign_in_with_provider", { provider: sso.providerName })
-                  : t("auth.sign_in_with_sso")}
-              </Button>
-              <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
-                <div className="h-px flex-1 bg-border" />
-                <span>{t("auth.sso_or")}</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
+              {sso?.enabled && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      window.location.href = "/api/v1/auth/oidc/start";
+                    }}
+                  >
+                    {sso.providerName
+                      ? t("auth.sign_in_with_provider", { provider: sso.providerName })
+                      : t("auth.sign_in_with_sso")}
+                  </Button>
+                  <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="h-px flex-1 bg-border" />
+                    <span>{t("auth.sso_or")}</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                </>
+              )}
+              {oidcError && (
+                <div className="mb-4 text-sm text-destructive bg-destructive/10 rounded-lg p-3 animate-slide-down">
+                  {t(`auth.oidc_error.${oidcError}`)}
+                </div>
+              )}
+              {/* Overlay-provided sign-in alternatives (e.g. OAuth buttons). */}
+              <Slot name="login-oauth" />
+              {demo && (
+                <div
+                  role="status"
+                  className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-amber-300/40 bg-amber-100 p-3 text-sm text-amber-800 dark:border-amber-700/30 dark:bg-amber-900/40 dark:text-amber-200"
+                >
+                  <span>
+                    {t("auth.demo_credentials")}{" "}
+                    <span className="font-mono font-semibold">
+                      {demo.username} / {demo.password}
+                    </span>
+                  </span>
+                  <Button type="button" variant="outline" size="sm" onClick={fillDemo}>
+                    {t("auth.demo_fill")}
+                  </Button>
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                {error && (
+                  <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 animate-slide-down">
+                    {error}
+                  </div>
+                )}
+                <FormField label={t("auth.username")} error={getError("username")} required>
+                  <Input
+                    value={form.username}
+                    onChange={update("username")}
+                    onBlur={() => onBlur("username", form)}
+                    aria-invalid={!!getError("username")}
+                    autoComplete="username"
+                    autoFocus
+                  />
+                </FormField>
+                <FormField label={t("auth.password")} error={getError("password")} required>
+                  <Input
+                    type="password"
+                    value={form.password}
+                    onChange={update("password")}
+                    onBlur={() => onBlur("password", form)}
+                    aria-invalid={!!getError("password")}
+                    autoComplete="current-password"
+                  />
+                </FormField>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? t("auth.signing_in") : t("auth.sign_in")}
+                </Button>
+              </form>
+              {/* Overlay-provided footer (e.g. a sign-up link). */}
+              <Slot name="login-footer" />
             </>
           )}
-          {oidcError && (
-            <div className="mb-4 text-sm text-destructive bg-destructive/10 rounded-lg p-3 animate-slide-down">
-              {t(`auth.oidc_error.${oidcError}`)}
-            </div>
-          )}
-          {/* Overlay-provided sign-in alternatives (e.g. OAuth buttons). */}
-          <Slot name="login-oauth" />
-          {demo && (
-            <div
-              role="status"
-              className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-amber-300/40 bg-amber-100 p-3 text-sm text-amber-800 dark:border-amber-700/30 dark:bg-amber-900/40 dark:text-amber-200"
-            >
-              <span>
-                {t("auth.demo_credentials")}{" "}
-                <span className="font-mono font-semibold">
-                  {demo.username} / {demo.password}
-                </span>
-              </span>
-              <Button type="button" variant="outline" size="sm" onClick={fillDemo}>
-                {t("auth.demo_fill")}
-              </Button>
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3 animate-slide-down">
-                {error}
-              </div>
-            )}
-            <FormField label={t("auth.username")} error={getError("username")} required>
-              <Input
-                value={form.username}
-                onChange={update("username")}
-                onBlur={() => onBlur("username", form)}
-                aria-invalid={!!getError("username")}
-                autoComplete="username"
-                autoFocus
-              />
-            </FormField>
-            <FormField label={t("auth.password")} error={getError("password")} required>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={update("password")}
-                onBlur={() => onBlur("password", form)}
-                aria-invalid={!!getError("password")}
-                autoComplete="current-password"
-              />
-            </FormField>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? t("auth.signing_in") : t("auth.sign_in")}
-            </Button>
-          </form>
-          {/* Overlay-provided footer (e.g. a sign-up link). */}
-          <Slot name="login-footer" />
         </CardContent>
       </Card>
     </div>

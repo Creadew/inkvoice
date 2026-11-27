@@ -162,6 +162,22 @@ const fr: TranslationKeys = {
     reset_token_missing: "Ce lien de réinitialisation est incomplet — demandez-en un nouveau.",
     password_too_short: "Le mot de passe doit contenir au moins 12 caractères",
     passwords_do_not_match: "Les mots de passe ne correspondent pas",
+    mfa_setup_title: "Configurer l'authentification à deux facteurs",
+    mfa_setup_description: "Protégez votre compte avec une application d'authentification.",
+    mfa_setup_scan:
+      "Scannez ce code QR avec une application d'authentification (Google Authenticator, Microsoft Authenticator, 1Password…), puis saisissez le code à 6 chiffres affiché.",
+    mfa_manual_key: "Impossible de scanner ? Saisissez plutôt cette clé dans l'application :",
+    mfa_qr_alt: "Code QR pour votre application d'authentification",
+    mfa_verify_title: "Authentification à deux facteurs",
+    mfa_verify_description:
+      "Saisissez le code à 6 chiffres de votre application d'authentification.",
+    mfa_code: "Code d'authentification",
+    mfa_verify: "Vérifier",
+    mfa_verifying: "Vérification...",
+    mfa_code_length: "Saisissez le code à 6 chiffres",
+    mfa_invalid_code: "Ce code est incorrect ou a déjà été utilisé. Essayez le suivant.",
+    mfa_locked: "Trop de codes incorrects. Veuillez réessayer plus tard.",
+    mfa_expired: "Votre connexion a expiré. Veuillez vous reconnecter.",
   },
 
   // Tableau de bord
@@ -1217,6 +1233,11 @@ const fr: TranslationKeys = {
     user_created: "Utilisateur créé",
     user_updated: "Utilisateur mis à jour",
     user_deleted: "Utilisateur supprimé",
+    reset_mfa: "Réinitialiser l'authentificateur",
+    reset_mfa_title: "Réinitialiser l'application d'authentification ?",
+    reset_mfa_description:
+      "Cet utilisateur devra configurer à nouveau son application d'authentification lors de sa prochaine connexion.",
+    mfa_reset_done: "Authentificateur réinitialisé",
     batch_updated: "{{count}} utilisateur(s) mis à jour",
     batch_update_failed: "{{count}} utilisateur(s) en échec",
     batch_action_title: "{{action}} {{count}} utilisateur(s) ?",

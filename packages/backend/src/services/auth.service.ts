@@ -26,12 +26,11 @@ export async function verifyCredentials(username: string, password: string): Pro
   return user;
 }
 
-export async function login(username: string, password: string, tenantId?: string) {
-  const user = await verifyCredentials(username, password);
-  if (!user) {
-    return null;
-  }
-
+/**
+ * Mints a web session for a user who has passed every sign-in check
+ * (password, and the authenticator code when one applies).
+ */
+export async function createSession(user: User, tenantId?: string) {
   const token = await signToken({
     sub: user.id,
     username: user.username,

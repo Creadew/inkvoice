@@ -9,6 +9,7 @@ import {
   listDeviceSessions,
   revokeDeviceSession,
 } from "../services/device-session.service";
+import { mfaStepFor, verifyMfaCode } from "../services/mfa.service";
 
 // Mounted at /api/v1/auth/device-sessions, i.e. before the global auth
 // middleware: sign-in is public, everything else opts into authMiddleware.
@@ -19,6 +20,8 @@ const optionalText = z.string().max(100).nullish();
 const signInSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
+  /** Authenticator-app code; required once the user has one set up. */
+  totp_code: z.string().trim().max(10).nullish(),
   device: z.object({
     name: z.string().trim().min(1, "Device name is required").max(100),
     platform: z.enum(["ios", "android"]),
@@ -47,6 +50,44 @@ deviceSessions.post("/", rateLimiter, async (c) => {
       { success: false, error: "Invalid credentials", code: "INVALID_CREDENTIALS" },
       401,
     );
+  }
+
+  // The app has no enrollment flow: an authenticator is set up by signing in
+  // on the web first, after which every device sign-in needs a code.
+  const mfaStep = mfaStepFor(user.id);
+  if (mfaStep === "setup") {
+    return c.json(
+      {
+        success: false,
+        error: "Set up an authenticator app by signing in on the web first",
+        code: "MFA_SETUP_REQUIRED",
+      },
+      403,
+    );
+  }
+  if (mfaStep === "verify") {
+    if (!parsed.totp_code) {
+      return c.json(
+        { success: false, error: "Authentication code required", code: "MFA_CODE_REQUIRED" },
+        401,
+      );
+    }
+    const result = verifyMfaCode(user.id, parsed.totp_code);
+    if (!result.ok) {
+      return result.reason === "locked"
+        ? c.json(
+            {
+              success: false,
+              error: "Too many incorrect codes. Please try again later.",
+              code: "MFA_LOCKED",
+            },
+            429,
+          )
+        : c.json(
+            { success: false, error: "Invalid authentication code", code: "INVALID_MFA_CODE" },
+            401,
+          );
+    }
   }
 
   const { token, session } = createDeviceSession(user.id, parsed.device, requestIp(c));

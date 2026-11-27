@@ -169,6 +169,22 @@ const de: TranslationKeys = {
       "Dieser Link zum Zurücksetzen ist unvollständig — fordern Sie einen neuen an.",
     password_too_short: "Das Passwort muss mindestens 12 Zeichen lang sein",
     passwords_do_not_match: "Die Passwörter stimmen nicht überein",
+    mfa_setup_title: "Zwei-Faktor-Authentifizierung einrichten",
+    mfa_setup_description: "Schützen Sie Ihr Konto mit einer Authenticator-App.",
+    mfa_setup_scan:
+      "Scannen Sie diesen QR-Code mit einer Authenticator-App (Google Authenticator, Microsoft Authenticator, 1Password…) und geben Sie dann den angezeigten 6-stelligen Code ein.",
+    mfa_manual_key: "Scannen nicht möglich? Geben Sie stattdessen diesen Schlüssel in der App ein:",
+    mfa_qr_alt: "QR-Code für Ihre Authenticator-App",
+    mfa_verify_title: "Zwei-Faktor-Authentifizierung",
+    mfa_verify_description: "Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein.",
+    mfa_code: "Authentifizierungscode",
+    mfa_verify: "Bestätigen",
+    mfa_verifying: "Wird geprüft...",
+    mfa_code_length: "Geben Sie den 6-stelligen Code ein",
+    mfa_invalid_code:
+      "Der Code ist falsch oder wurde bereits verwendet. Versuchen Sie den nächsten.",
+    mfa_locked: "Zu viele falsche Codes. Bitte versuchen Sie es später erneut.",
+    mfa_expired: "Ihre Anmeldung ist abgelaufen. Bitte melden Sie sich erneut an.",
   },
 
   // Dashboard
@@ -1224,6 +1240,11 @@ const de: TranslationKeys = {
     user_created: "Benutzer erstellt",
     user_updated: "Benutzer aktualisiert",
     user_deleted: "Benutzer gelöscht",
+    reset_mfa: "Authenticator zurücksetzen",
+    reset_mfa_title: "Authenticator-App zurücksetzen?",
+    reset_mfa_description:
+      "Dieser Benutzer muss seine Authenticator-App bei der nächsten Anmeldung neu einrichten.",
+    mfa_reset_done: "Authenticator zurückgesetzt",
     batch_updated: "{{count}} Benutzer aktualisiert",
     batch_update_failed: "{{count}} Benutzer fehlgeschlagen",
     batch_action_title: "{{count}} Benutzer {{action}}?",

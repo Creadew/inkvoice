@@ -160,6 +160,21 @@ const es: TranslationKeys = {
     reset_token_missing: "Este enlace de restablecimiento está incompleto — solicite uno nuevo.",
     password_too_short: "La contraseña debe tener al menos 12 caracteres",
     passwords_do_not_match: "Las contraseñas no coinciden",
+    mfa_setup_title: "Configura la verificación en dos pasos",
+    mfa_setup_description: "Protege tu cuenta con una aplicación de autenticación.",
+    mfa_setup_scan:
+      "Escanea este código QR con una aplicación de autenticación (Google Authenticator, Microsoft Authenticator, 1Password…) y luego introduce el código de 6 dígitos que muestra.",
+    mfa_manual_key: "¿No puedes escanearlo? Introduce esta clave en la aplicación:",
+    mfa_qr_alt: "Código QR para tu aplicación de autenticación",
+    mfa_verify_title: "Verificación en dos pasos",
+    mfa_verify_description: "Introduce el código de 6 dígitos de tu aplicación de autenticación.",
+    mfa_code: "Código de autenticación",
+    mfa_verify: "Verificar",
+    mfa_verifying: "Verificando...",
+    mfa_code_length: "Introduce el código de 6 dígitos",
+    mfa_invalid_code: "El código es incorrecto o ya se ha usado. Prueba con el siguiente.",
+    mfa_locked: "Demasiados códigos incorrectos. Inténtalo de nuevo más tarde.",
+    mfa_expired: "Tu inicio de sesión ha caducado. Vuelve a iniciar sesión.",
   },
 
   // Panel
@@ -1212,6 +1227,11 @@ const es: TranslationKeys = {
     user_created: "Usuario creado",
     user_updated: "Usuario actualizado",
     user_deleted: "Usuario eliminado",
+    reset_mfa: "Restablecer autenticador",
+    reset_mfa_title: "¿Restablecer la aplicación de autenticación?",
+    reset_mfa_description:
+      "Este usuario tendrá que configurar de nuevo su aplicación de autenticación la próxima vez que inicie sesión.",
+    mfa_reset_done: "Autenticador restablecido",
     batch_updated: "{{count}} usuario(s) actualizado(s)",
     batch_update_failed: "{{count}} usuario(s) con error",
     batch_action_title: "¿{{action}} {{count}} usuario(s)?",

@@ -16,11 +16,21 @@ interface User {
   impersonation?: { impersonator_id: string; reason: string | null } | null;
 }
 
+export interface MfaChallenge {
+  step: "setup" | "verify";
+  token: string;
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  /**
+   * Password step. Resolves null once signed in, or with the authenticator
+   * challenge still to pass (see verifyMfa).
+   */
+  login: (username: string, password: string) => Promise<MfaChallenge | null>;
+  verifyMfa: (mfaToken: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
@@ -39,6 +49,16 @@ export const useAuthStore = create<AuthState>((set) => {
 
     login: async (username: string, password: string) => {
       const res = await api.login(username, password);
+      const { token, user, mfa_required, mfa_token } = res.data;
+      if (mfa_required && mfa_token) return { step: mfa_required, token: mfa_token };
+      if (!token || !user) throw new Error("Unexpected sign-in response");
+      setAuthToken(token);
+      set({ user, token, isLoading: false });
+      return null;
+    },
+
+    verifyMfa: async (mfaToken: string, code: string) => {
+      const res = await api.mfaVerify(mfaToken, code);
       const { token, user } = res.data;
       setAuthToken(token);
       set({ user, token, isLoading: false });

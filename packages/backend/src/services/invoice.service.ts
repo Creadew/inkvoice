@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { getDb } from "../database/connection";
+import { emitPluginEvent } from "../plugins/events";
 import type { PaginatedResponse } from "../types/common";
 import type {
   Invoice,
@@ -773,6 +774,8 @@ export function markSent(id: string): InvoiceWithItems | null {
   // Automatic PEPPOL transmit when enabled and the customer is reachable.
   // Fire-and-forget: a transport failure must never fail the invoice send.
   maybeAutoTransmit(id);
+
+  emitPluginEvent({ type: "invoice.issued", invoiceId: id });
 
   return getInvoice(id);
 }

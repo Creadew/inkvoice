@@ -30,7 +30,29 @@ export interface BackendPlugin {
   feature?: string;
   /** On for installs that never explicitly toggled their plugin set. */
   defaultEnabled?: boolean;
+  /** Display fallbacks for a plugin the published catalog does not list (for
+   *  example a fork's own plugin). Catalog copy wins when present. */
+  meta?: PluginMeta;
+  /** In-process domain events (see events.ts). Delivered only while enabled. */
+  onEvent?: (event: PluginEvent) => void | Promise<void>;
+  /** Runs on every scheduler tick (hourly) while enabled. */
+  onSchedule?: () => void | Promise<void>;
 }
+
+export interface PluginMeta {
+  name: string;
+  tagline?: string;
+  description?: string;
+  category?: string;
+  /** Lucide icon name, resolved through the frontend icon-map. */
+  icon?: string;
+}
+
+/** Domain events core services emit for plugins. Payloads carry ids only, so a
+ *  listener reads current state rather than a snapshot. */
+export type PluginEvent =
+  | { type: "invoice.issued"; invoiceId: string }
+  | { type: "payment.recorded"; invoiceId: string; paymentId: string };
 
 /** Ids the app mounts its own routes under, so a plugin may never claim them.
  *  A plugin with id "catalog" would shadow /api/v1/plugins/catalog. Mirrored as

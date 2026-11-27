@@ -1175,6 +1175,18 @@ const MIGRATIONS: Migration[] = [
       addColumnIfMissing(db, "invoices", "service_period_end", "TEXT");
     },
   },
+  {
+    version: 36,
+    name: "user_totp",
+    up: (db) => {
+      // Authenticator-app (TOTP) second factor. totp_secret is set when
+      // enrollment starts; the factor only counts once totp_enabled_at is set
+      // by a first successful code. totp_last_step blocks code replay.
+      addColumnIfMissing(db, "users", "totp_secret", "TEXT");
+      addColumnIfMissing(db, "users", "totp_enabled_at", "TEXT");
+      addColumnIfMissing(db, "users", "totp_last_step", "INTEGER");
+    },
+  },
 ];
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

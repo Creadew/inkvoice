@@ -6,3 +6,4 @@ peer = false
 # migrations + seed) can exceed bun's 5000ms default when test files run
 # in parallel.
 timeout = 30000
+preload = ["./packages/backend/src/tests/setup.ts"]

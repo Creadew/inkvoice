@@ -6,11 +6,19 @@ import { getDb } from "../database/connection";
 import { authMiddleware } from "../middleware/auth";
 import { bucketRateLimiter, rateLimiter } from "../middleware/rate-limiter";
 import { logActivity } from "../services/activity.service";
-import { getCurrentUser, login } from "../services/auth.service";
+import { createSession, getCurrentUser, verifyCredentials } from "../services/auth.service";
 import { revokeAllDeviceSessions } from "../services/device-session.service";
 import { sendEmail } from "../services/email.service";
 import { passwordResetEmail } from "../services/email-templates";
+import {
+  beginEnrollment,
+  mfaStepFor,
+  signMfaChallenge,
+  verifyMfaChallenge,
+  verifyMfaCode,
+} from "../services/mfa.service";
 import { getSystemMailSender } from "../services/system-mail";
+import type { User } from "../types/user";
 import { getEnv } from "../utils/env";
 import { hashPassword } from "../utils/password";
 
@@ -32,15 +40,10 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-auth.post("/login", rateLimiter, async (c) => {
-  const body = await c.req.json();
-  const parsed = loginSchema.parse(body);
-
-  // A multi-tenant deployment's middleware sets c.get("tenant"). Bind the
-  // issued token to that tenant so it can't be replayed against another
-  // subdomain.
-  const tenant = c.get("tenant") as { id: string } | undefined;
-  const result = await login(parsed.username, parsed.password, tenant?.id);
+// Sets the session cookie and returns the token + user: the end of every
+// successful web password sign-in, with or without an authenticator step.
+async function startSession(c: Context, user: User, tenantId?: string) {
+  const result = await createSession(user, tenantId);
   if (!result) {
     return c.json({ success: false, error: "Invalid credentials" }, 401);
   }
@@ -66,6 +69,103 @@ auth.post("/login", rateLimiter, async (c) => {
     resource_id: result.user.id,
   });
   return c.json({ success: true, data: result });
+}
+
+auth.post("/login", rateLimiter, async (c) => {
+  const body = await c.req.json();
+  const parsed = loginSchema.parse(body);
+
+  // A multi-tenant deployment's middleware sets c.get("tenant"). Bind the
+  // issued token to that tenant so it can't be replayed against another
+  // subdomain.
+  const tenant = c.get("tenant") as { id: string } | undefined;
+  const user = await verifyCredentials(parsed.username, parsed.password);
+  if (!user) {
+    return c.json({ success: false, error: "Invalid credentials" }, 401);
+  }
+
+  // Authenticator step: the password alone earns only a short-lived
+  // challenge, redeemed at /mfa/verify (after /mfa/setup on first sign-in).
+  const mfaStep = mfaStepFor(user.id);
+  if (mfaStep) {
+    return c.json({
+      success: true,
+      data: { mfa_required: mfaStep, mfa_token: await signMfaChallenge(user.id, tenant?.id) },
+    });
+  }
+
+  return startSession(c, user, tenant?.id);
+});
+
+const mfaSetupSchema = z.object({ mfa_token: z.string().min(1) });
+const mfaVerifySchema = z.object({
+  mfa_token: z.string().min(1),
+  code: z.string().trim().min(1, "Code is required"),
+});
+
+const invalidChallenge = {
+  success: false,
+  error: "Sign-in expired, please sign in again",
+  code: "MFA_CHALLENGE_EXPIRED",
+};
+
+// First sign-in: hands out a new authenticator secret (and its QR code). It
+// only takes effect once a code from it is accepted at /mfa/verify.
+auth.post("/mfa/setup", rateLimiter, async (c) => {
+  const parsed = mfaSetupSchema.parse(await c.req.json().catch(() => ({})));
+  const tenant = c.get("tenant") as { id: string } | undefined;
+  const userId = await verifyMfaChallenge(parsed.mfa_token, tenant?.id);
+  if (!userId) return c.json(invalidChallenge, 401);
+
+  const enrollment = beginEnrollment(userId);
+  if (!enrollment) {
+    return c.json({ success: false, error: "An authenticator is already set up" }, 409);
+  }
+  return c.json({ success: true, data: enrollment });
+});
+
+auth.post("/mfa/verify", rateLimiter, async (c) => {
+  const parsed = mfaVerifySchema.parse(await c.req.json().catch(() => ({})));
+  const tenant = c.get("tenant") as { id: string } | undefined;
+  const userId = await verifyMfaChallenge(parsed.mfa_token, tenant?.id);
+  if (!userId) return c.json(invalidChallenge, 401);
+
+  const result = verifyMfaCode(userId, parsed.code);
+  if (!result.ok) {
+    if (result.reason === "locked") {
+      return c.json(
+        {
+          success: false,
+          error: "Too many incorrect codes. Please try again later.",
+          code: "MFA_LOCKED",
+        },
+        429,
+      );
+    }
+    if (result.reason === "not_setup") {
+      return c.json({ success: false, error: "Authenticator is not set up" }, 400);
+    }
+    return c.json(
+      { success: false, error: "Invalid authentication code", code: "INVALID_MFA_CODE" },
+      401,
+    );
+  }
+
+  const user = getDb()
+    .query("SELECT * FROM users WHERE id = ? AND is_active = 1")
+    .get(userId) as User | null;
+  if (!user) return c.json(invalidChallenge, 401);
+
+  if (result.enrolled) {
+    logActivity({
+      user_id: user.id,
+      user_name: user.username,
+      action: "mfa_enrolled",
+      resource_type: "user",
+      resource_id: user.id,
+    });
+  }
+  return startSession(c, user, tenant?.id);
 });
 
 auth.post("/logout", (c) => {

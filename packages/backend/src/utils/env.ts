@@ -45,6 +45,11 @@ export interface Env {
   OIDC_ENABLED: boolean;
   /** Days a mobile device session stays valid without use (sliding). */
   DEVICE_SESSION_IDLE_DAYS: number;
+  /**
+   * Password sign-ins must pass an authenticator-app code; users without one
+   * set it up on their next sign-in. Default on; always off in DEMO_MODE.
+   */
+  MFA_REQUIRED: boolean;
 }
 
 /**
@@ -182,6 +187,7 @@ export function getEnv(): Env {
       const days = parseInt(process.env.DEVICE_SESSION_IDLE_DAYS || "90", 10);
       return Number.isFinite(days) && days > 0 ? days : 90;
     })(),
+    MFA_REQUIRED: !demoMode && process.env.MFA_REQUIRED !== "false",
   };
 
   return cachedEnv;

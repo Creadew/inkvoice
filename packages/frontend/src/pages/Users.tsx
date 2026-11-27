@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { api } from "@/api/client";
@@ -32,6 +32,7 @@ export default function Users() {
     id: null,
   });
   const [batchAction, setBatchAction] = useState<{ action: string; label: string } | null>(null);
+  const [mfaResetId, setMfaResetId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
 
@@ -65,6 +66,20 @@ export default function Users() {
   };
   const handleSort = (key: string, direction: "asc" | "desc" | null) => {
     setSort(direction ? { key, direction } : null);
+  };
+
+  const handleMfaReset = async () => {
+    if (!mfaResetId) return;
+    setActionLoading(true);
+    try {
+      await api.resetUserMfa(mfaResetId);
+      toast.success(t("users.mfa_reset_done"));
+    } catch (err: unknown) {
+      toast.error(formatApiError(err, t));
+    } finally {
+      setActionLoading(false);
+      setMfaResetId(null);
+    }
   };
 
   const handleDelete = async () => {
@@ -238,6 +253,17 @@ export default function Users() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={t("users.reset_mfa")}
+                        title={t("users.reset_mfa")}
+                        onClick={() => setMfaResetId(u.id)}
+                      >
+                        <KeyRound className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {u.id !== currentUser?.id && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         aria-label={t("common.delete")}
                         onClick={() => setDeleteConfirm({ open: true, id: u.id })}
                       >
@@ -266,6 +292,19 @@ export default function Users() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!mfaResetId}
+        onOpenChange={(open) => {
+          if (!open) setMfaResetId(null);
+        }}
+        title={t("users.reset_mfa_title")}
+        description={t("users.reset_mfa_description")}
+        confirmLabel={t("users.reset_mfa")}
+        variant="destructive"
+        onConfirm={handleMfaReset}
+        loading={actionLoading}
+      />
 
       <ConfirmDialog
         open={deleteConfirm.open}

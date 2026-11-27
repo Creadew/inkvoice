@@ -2,6 +2,7 @@ import { unlinkSync } from "node:fs";
 import { closeDatabase, initDatabase } from "../database/connection";
 import { runMigrations } from "../database/migrations";
 import { seed, seedDemoData } from "../database/seed";
+import { runPluginSchedules } from "../plugins/events";
 import { getEnv } from "../utils/env";
 import { logger } from "../utils/logger";
 import { startTransportWorker, stopTransportWorker } from "./einvoice-transport.service";
@@ -111,4 +112,7 @@ async function runScheduledTasks(): Promise<void> {
   } catch (err) {
     logger.error({ err }, "Scheduler auto-bill error");
   }
+
+  // Each plugin's task is isolated: one failing never stops the others.
+  await runPluginSchedules();
 }

@@ -67,7 +67,8 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   if (res.status === 401) {
     const msg =
       typeof data.error === "string" && data.error.length > 0 ? data.error : "Unauthorized";
-    if (path !== "/auth/login") {
+    // A failed sign-in step isn't a lost session.
+    if (path !== "/auth/login" && !path.startsWith("/auth/mfa/")) {
       authToken = null;
       if (onUnauthorized) onUnauthorized();
     }
@@ -116,24 +117,43 @@ export class ApiError extends Error {
   }
 }
 
+interface SessionData {
+  token: string;
+  user: {
+    id: string;
+    username: string;
+    email: string | null;
+    display_name: string | null;
+    is_admin: boolean;
+  };
+}
+
 export const api = {
   // Auth
+  // Either a session, or (authenticator app) a challenge to redeem at
+  // mfaVerify — after mfaSetup when the user has none yet.
   login: (username: string, password: string) =>
     request<{
       success: boolean;
-      data: {
-        token: string;
-        user: {
-          id: string;
-          username: string;
-          email: string | null;
-          display_name: string | null;
-          is_admin: boolean;
-        };
-      };
+      data: Partial<SessionData> & { mfa_required?: "setup" | "verify"; mfa_token?: string };
     }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
+    }),
+
+  mfaSetup: (mfaToken: string) =>
+    request<{
+      success: boolean;
+      data: { secret: string; otpauth_uri: string; qr_code: string };
+    }>("/auth/mfa/setup", {
+      method: "POST",
+      body: JSON.stringify({ mfa_token: mfaToken }),
+    }),
+
+  mfaVerify: (mfaToken: string, code: string) =>
+    request<{ success: boolean; data: SessionData }>("/auth/mfa/verify", {
+      method: "POST",
+      body: JSON.stringify({ mfa_token: mfaToken, code }),
     }),
 
   logout: () => request("/auth/logout", { method: "POST" }),
@@ -596,6 +616,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
   deleteUser: (id: string) => request(`/users/${id}`, { method: "DELETE" }),
+  resetUserMfa: (id: string) => request(`/users/${id}/mfa`, { method: "DELETE" }),
   updateUserPermissions: (id: string, permissions: { resource: string; action: string }[]) =>
     request(`/users/${id}/permissions`, { method: "PUT", body: JSON.stringify({ permissions }) }),
 

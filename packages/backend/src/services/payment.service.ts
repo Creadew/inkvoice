@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { getDb } from "../database/connection";
+import { emitPluginEvent } from "../plugins/events";
 import {
   type CashDiscountConfig,
   cashDiscountOn,
@@ -158,6 +159,7 @@ export function recordPayment(
   recalculateInvoicePayments(invoiceId);
 
   const payment = db.query("SELECT * FROM payments WHERE id = ?").get(id) as Payment;
+  emitPluginEvent({ type: "payment.recorded", invoiceId, paymentId: id });
   return { success: true, data: payment };
 }
 

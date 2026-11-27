@@ -158,6 +158,21 @@ const tr: TranslationKeys = {
     reset_token_missing: "Bu sıfırlama bağlantısı eksik — yenisini isteyin.",
     password_too_short: "Şifre en az 12 karakter olmalıdır",
     passwords_do_not_match: "Şifreler eşleşmiyor",
+    mfa_setup_title: "İki adımlı doğrulamayı ayarlayın",
+    mfa_setup_description: "Hesabınızı bir doğrulama uygulamasıyla koruyun.",
+    mfa_setup_scan:
+      "Bu QR kodunu bir doğrulama uygulamasıyla (Google Authenticator, Microsoft Authenticator, 1Password…) tarayın, ardından gösterdiği 6 haneli kodu girin.",
+    mfa_manual_key: "Tarayamıyor musunuz? Bunun yerine bu anahtarı uygulamaya girin:",
+    mfa_qr_alt: "Doğrulama uygulamanız için QR kodu",
+    mfa_verify_title: "İki adımlı doğrulama",
+    mfa_verify_description: "Doğrulama uygulamanızdaki 6 haneli kodu girin.",
+    mfa_code: "Doğrulama kodu",
+    mfa_verify: "Doğrula",
+    mfa_verifying: "Doğrulanıyor...",
+    mfa_code_length: "6 haneli kodu girin",
+    mfa_invalid_code: "Bu kod yanlış veya zaten kullanılmış. Bir sonrakini deneyin.",
+    mfa_locked: "Çok fazla yanlış kod. Lütfen daha sonra tekrar deneyin.",
+    mfa_expired: "Oturum açma süreniz doldu. Lütfen tekrar giriş yapın.",
   },
 
   // Kontrol Paneli
@@ -1193,6 +1208,11 @@ const tr: TranslationKeys = {
     user_created: "Kullanıcı oluşturuldu",
     user_updated: "Kullanıcı güncellendi",
     user_deleted: "Kullanıcı silindi",
+    reset_mfa: "Doğrulayıcıyı sıfırla",
+    reset_mfa_title: "Doğrulama uygulaması sıfırlansın mı?",
+    reset_mfa_description:
+      "Bu kullanıcı bir sonraki girişinde doğrulama uygulamasını yeniden ayarlamak zorunda kalacak.",
+    mfa_reset_done: "Doğrulayıcı sıfırlandı",
     batch_updated: "{{count}} kullanıcı güncellendi",
     batch_update_failed: "{{count}} kullanıcı başarısız oldu",
     batch_action_title: "{{count}} kullanıcıya {{action}} uygula?",

@@ -156,6 +156,21 @@ const en = {
     reset_token_missing: "This reset link is incomplete — request a new one.",
     password_too_short: "Password must be at least 12 characters",
     passwords_do_not_match: "Passwords do not match",
+    mfa_setup_title: "Set up two-factor authentication",
+    mfa_setup_description: "Protect your account with an authenticator app.",
+    mfa_setup_scan:
+      "Scan this QR code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…), then enter the 6-digit code it shows.",
+    mfa_manual_key: "Can't scan it? Enter this key in the app instead:",
+    mfa_qr_alt: "QR code for your authenticator app",
+    mfa_verify_title: "Two-factor authentication",
+    mfa_verify_description: "Enter the 6-digit code from your authenticator app.",
+    mfa_code: "Authentication code",
+    mfa_verify: "Verify",
+    mfa_verifying: "Verifying...",
+    mfa_code_length: "Enter the 6-digit code",
+    mfa_invalid_code: "That code is incorrect or has already been used. Try the next one.",
+    mfa_locked: "Too many incorrect codes. Please try again later.",
+    mfa_expired: "Your sign-in expired. Please sign in again.",
   },
 
   // Dashboard
@@ -1191,6 +1206,11 @@ const en = {
     user_created: "User created",
     user_updated: "User updated",
     user_deleted: "User deleted",
+    reset_mfa: "Reset authenticator",
+    reset_mfa_title: "Reset authenticator app?",
+    reset_mfa_description:
+      "This user will have to set up their authenticator app again the next time they sign in.",
+    mfa_reset_done: "Authenticator reset",
     batch_updated: "{{count}} user(s) updated",
     batch_update_failed: "{{count}} user(s) failed",
     batch_action_title: "{{action}} {{count}} user(s)?",

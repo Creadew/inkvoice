@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { logActivity } from "../services/activity.service";
 import { revokeAllDeviceSessions } from "../services/device-session.service";
+import { resetMfa } from "../services/mfa.service";
 import * as userService from "../services/user.service";
 import { getEnv } from "../utils/env";
 
@@ -136,6 +137,23 @@ users.delete("/:id/device-sessions", (c) => {
     resource_type: "user",
     resource_id: id,
     metadata: { revoked },
+  });
+  return c.json({ success: true });
+});
+
+// Removes a user's authenticator app (e.g. a lost phone); they set up a new
+// one on their next sign-in. Admin-only via the /users guard.
+users.delete("/:id/mfa", (c) => {
+  const id = c.req.param("id");
+  if (!resetMfa(id)) {
+    return c.json({ success: false, error: "User not found" }, 404);
+  }
+  logActivity({
+    user_id: c.get("userId"),
+    user_name: c.get("user")?.username,
+    action: "mfa_reset",
+    resource_type: "user",
+    resource_id: id,
   });
   return c.json({ success: true });
 });
