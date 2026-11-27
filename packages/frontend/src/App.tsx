@@ -35,6 +35,7 @@ const RecurringInvoices = lazy(() => import("@/pages/RecurringInvoices"));
 const Reports = lazy(() => import("@/pages/Reports"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Users = lazy(() => import("@/pages/Users"));
+const Profile = lazy(() => import("@/pages/Profile"));
 const ClientPortal = lazy(() => import("@/pages/ClientPortal"));
 const OnboardingWizard = lazy(() => import("@/pages/OnboardingWizard"));
 
@@ -351,6 +352,8 @@ function App() {
                   </AdminRoute>
                 }
               />
+              {/* Every signed-in user's own account (not admin-only like Settings). */}
+              <Route path="/profile" element={<Profile />} />
               {/* Overlay/plugin protected routes — rendered inside MainLayout
               so they share the authenticated chrome. Admin-scoped ones are
               wrapped in AdminRoute. */}

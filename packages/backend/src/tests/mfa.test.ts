@@ -320,7 +320,7 @@ describe("profile: own authenticator", () => {
     const { token } = await enroll(user.username, user.password);
     const status = (await json(await get("/api/v1/auth/mfa", token))).data;
     expect(status).toMatchObject({ enabled: true, required: true, recovery_codes_remaining: 10 });
-    expect(status.enabled_at).toBeString();
+    expect(Date.now() - Date.parse(status.enabled_at)).toBeLessThan(60_000);
   });
 
   test("removing it needs the password, then setup starts over", async () => {

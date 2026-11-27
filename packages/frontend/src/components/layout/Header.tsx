@@ -36,6 +36,7 @@ const PATH_KEY: Record<string, string> = {
   users: "nav.users",
   activity: "nav.activity",
   templates: "nav.templates",
+  profile: "nav.profile",
 };
 
 function entityPath(e: RecentEntity): string {

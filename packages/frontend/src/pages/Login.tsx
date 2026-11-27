@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { api } from "@/api/client";
 import { MfaStep } from "@/components/auth/MfaStep";
+import { RecoveryCodes } from "@/components/auth/RecoveryCodes";
 import { InkvoiceLogo } from "@/components/InkvoiceLogo";
 import { Slot } from "@/components/layout/slot-registry";
 import { FormField } from "@/components/shared/FormField";
@@ -18,6 +19,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [mfa, setMfa] = useState<MfaChallenge | null>(null);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [demo, setDemo] = useState<{ username: string; password: string } | null>(null);
   const [sso, setSso] = useState<{ enabled: boolean; providerName: string | null } | null>(null);
   const OIDC_ERROR_CODES = new Set([
@@ -37,6 +39,7 @@ export default function Login() {
       : "auth_failed"
     : null;
   const login = useAuthStore((s) => s.login);
+  const finishSignIn = useAuthStore((s) => s.finishSignIn);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -98,6 +101,16 @@ export default function Login() {
     return <Navigate to="/" replace />;
   }
 
+  // Password, then the authenticator app, then (after first-time setup) the
+  // recovery codes.
+  const [titleKey, descriptionKey] = recoveryCodes
+    ? ["auth.recovery_codes_title", "auth.recovery_codes_description"]
+    : mfa?.step === "setup"
+      ? ["auth.mfa_setup_title", "auth.mfa_setup_description"]
+      : mfa
+        ? ["auth.mfa_verify_title", "auth.mfa_verify_description"]
+        : ["auth.welcome_back", "auth.sign_in_to"];
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background prism-grid-bg p-4">
       <Card className="w-full max-w-sm">
@@ -105,23 +118,13 @@ export default function Login() {
           <div className="flex justify-center mb-4">
             <InkvoiceLogo className="h-16" />
           </div>
-          <CardTitle className="text-xl">
-            {mfa
-              ? t(mfa.step === "setup" ? "auth.mfa_setup_title" : "auth.mfa_verify_title")
-              : t("auth.welcome_back")}
-          </CardTitle>
-          <CardDescription>
-            {mfa
-              ? t(
-                  mfa.step === "setup"
-                    ? "auth.mfa_setup_description"
-                    : "auth.mfa_verify_description",
-                )
-              : t("auth.sign_in_to")}
-          </CardDescription>
+          <CardTitle className="text-xl">{t(titleKey)}</CardTitle>
+          <CardDescription>{t(descriptionKey)}</CardDescription>
         </CardHeader>
         <CardContent>
-          {mfa ? (
+          {recoveryCodes ? (
+            <RecoveryCodes codes={recoveryCodes} onDone={finishSignIn} />
+          ) : mfa ? (
             <MfaStep
               challenge={mfa}
               onCancel={(message) => {
@@ -129,6 +132,7 @@ export default function Login() {
                 setForm((f) => ({ ...f, password: "" }));
                 setError(message ?? "");
               }}
+              onRecoveryCodes={setRecoveryCodes}
             />
           ) : (
             <>

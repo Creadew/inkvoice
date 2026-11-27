@@ -37,6 +37,7 @@ export const CURRENCIES: Currency[] = [
   { code: "KRW", name: "South Korean Won", symbol: "₩" },
   { code: "TRY", name: "Turkish Lira", symbol: "₺" },
   { code: "INR", name: "Indian Rupee", symbol: "₹" },
+  { code: "LKR", name: "Sri Lankan Rupee", symbol: "Rs" },
   { code: "RUB", name: "Russian Ruble", symbol: "₽" },
   { code: "BRL", name: "Brazilian Real", symbol: "R$" },
   { code: "ZAR", name: "South African Rand", symbol: "R" },

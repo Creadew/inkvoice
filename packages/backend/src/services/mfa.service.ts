@@ -208,7 +208,10 @@ export function getMfaStatus(userId: string) {
     .get(userId) as { n: number };
   return {
     enabled: !!row?.totp_enabled_at,
-    enabled_at: row?.totp_enabled_at ?? null,
+    // Stored by datetime('now'): UTC without a zone marker.
+    enabled_at: row?.totp_enabled_at
+      ? new Date(`${row.totp_enabled_at.replace(" ", "T")}Z`).toISOString()
+      : null,
     required: getEnv().MFA_REQUIRED,
     recovery_codes_remaining: unused.n,
   };
