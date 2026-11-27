@@ -110,7 +110,7 @@ function SortableLineItem({
 
   return (
     <div ref={setNodeRef} style={style} className={cn("space-y-1", isDragging && "opacity-50")}>
-      <div className="grid grid-cols-[auto_2fr_2fr_1fr_1fr_1.5fr_1.5fr_1fr] gap-2 items-end min-w-[720px] sm:min-w-0">
+      <div className="grid grid-cols-[auto_2fr_2fr_1fr_1fr_1.5fr_1.5fr_1fr] gap-2 items-end min-w-180 sm:min-w-0">
         <button
           type="button"
           ref={setActivatorNodeRef}

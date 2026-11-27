@@ -96,7 +96,7 @@ function SortableQuoteItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "grid grid-cols-[auto_3fr_3fr_1fr_2fr_2fr_1fr] gap-2 items-end min-w-[720px] sm:min-w-0",
+        "grid grid-cols-[auto_3fr_3fr_1fr_2fr_2fr_1fr] gap-2 items-end min-w-180 sm:min-w-0",
         isDragging && "opacity-50",
       )}
     >
