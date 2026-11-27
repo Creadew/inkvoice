@@ -4,6 +4,7 @@
 // so this map is curated: add an entry when a published plugin uses a new
 // icon. Unknown names fall back to Puzzle.
 import {
+  Briefcase,
   Clock,
   FileCheck,
   type LucideIcon,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 
 const ICONS: Record<string, LucideIcon> = {
+  Briefcase,
   Clock,
   FileCheck,
   MessageSquare,
