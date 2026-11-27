@@ -300,8 +300,25 @@ describe("schema migration runner", () => {
     ).toThrow();
   });
 
-  test("migrations reach version 36", () => {
-    expect(LATEST_MIGRATION_VERSION).toBe(36);
+  test("migrations reach version 37", () => {
+    expect(LATEST_MIGRATION_VERSION).toBe(37);
+  });
+
+  test("version 37 adds recovery codes that go away with their user", () => {
+    runWith(db, () => runMigrations());
+    db.run("INSERT INTO users (id, username, password_hash) VALUES ('u37', 'with-codes', 'x')");
+    db.run(
+      "INSERT INTO user_recovery_codes (user_id, code_hash) VALUES ('u37', 'h1'), ('u37', 'h2')",
+    );
+    const count = () =>
+      (
+        db.query("SELECT COUNT(*) AS n FROM user_recovery_codes WHERE user_id = 'u37'").get() as {
+          n: number;
+        }
+      ).n;
+    expect(count()).toBe(2);
+    db.run("DELETE FROM users WHERE id = 'u37'");
+    expect(count()).toBe(0);
   });
 
   test("version 36 adds the authenticator columns to an existing user", () => {

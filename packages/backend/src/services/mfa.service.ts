@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { sign, verify } from "hono/jwt";
 import { getDb } from "../database/connection";
 import { getEnv } from "../utils/env";
@@ -10,11 +11,15 @@ import { generateTotpSecret, otpauthUri, verifyTotp } from "../utils/totp";
  * A correct password yields a short-lived challenge token instead of a
  * session. The challenge is redeemed with a code (POST /auth/mfa/verify); a
  * user without an authenticator first fetches a QR code (POST /auth/mfa/setup)
- * and the first good code enables it.
+ * and the first good code enables it and issues one-time recovery codes for
+ * signing in without the app.
  */
 
 const CHALLENGE_TTL_SECONDS = 300;
 const ISSUER = "Inkvoice";
+const RECOVERY_CODE_COUNT = 10;
+// No 0/1/i/l/o, so a code survives being written down or read aloud.
+const RECOVERY_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyz";
 
 export type MfaStep = "setup" | "verify";
 
@@ -112,9 +117,10 @@ function recordFailure(userId: string): void {
   else failures.set(userId, { count: 1, resetAt: now + getEnv().RATE_LIMIT_WINDOW * 1000 });
 }
 
-export type VerifyResult =
-  | { ok: true; enrolled: boolean }
-  | { ok: false; reason: "invalid" | "locked" | "not_setup" };
+type MfaFailure = { ok: false; reason: "invalid" | "locked" | "not_setup" };
+
+/** `recoveryCodes` is set when this code just finished setup: shown once, stored hashed. */
+export type VerifyResult = { ok: true; recoveryCodes: string[] | null } | MfaFailure;
 
 /**
  * Checks a code against the user's authenticator, enabling a pending one on
@@ -126,33 +132,104 @@ export function verifyMfaCode(userId: string, code: string): VerifyResult {
   if (isLocked(userId)) return { ok: false, reason: "locked" };
 
   const step = verifyTotp(row.totp_secret, code, row.totp_last_step);
-  // The guarded UPDATE makes acceptance atomic: two concurrent requests with
-  // the same code can't both succeed.
-  const changed =
+  const db = getDb();
+  const accepted =
     step !== null &&
-    getDb().run(
-      `UPDATE users SET totp_last_step = ?, totp_enabled_at = COALESCE(totp_enabled_at, datetime('now'))
-       WHERE id = ? AND totp_secret = ? AND (totp_last_step IS NULL OR totp_last_step < ?)`,
-      [step, userId, row.totp_secret, step],
-    ).changes === 1;
+    db.transaction(() => {
+      // The guarded UPDATE makes acceptance atomic: two concurrent requests
+      // with the same code can't both succeed.
+      const changed =
+        db.run(
+          `UPDATE users SET totp_last_step = ?, totp_enabled_at = COALESCE(totp_enabled_at, datetime('now'))
+           WHERE id = ? AND totp_secret = ? AND (totp_last_step IS NULL OR totp_last_step < ?)`,
+          [step, userId, row.totp_secret, step],
+        ).changes === 1;
+      if (!changed) return null;
+      return { recoveryCodes: row.totp_enabled_at ? null : replaceRecoveryCodes(userId) };
+    })();
 
-  if (!changed) {
+  if (!accepted) {
     recordFailure(userId);
     return { ok: false, reason: "invalid" };
   }
   failures.delete(userId);
-  return { ok: true, enrolled: !row.totp_enabled_at };
+  return { ok: true, recoveryCodes: accepted.recoveryCodes };
 }
 
-/** Removes the user's authenticator; they set up a new one on next sign-in. */
+function hashRecoveryCode(code: string): string {
+  const normalized = code.toLowerCase().replace(/[\s-]/g, "");
+  return crypto.createHash("sha256").update(normalized).digest("hex");
+}
+
+function generateRecoveryCode(): string {
+  let code = "";
+  for (let i = 0; i < 10; i++) {
+    code += RECOVERY_ALPHABET[crypto.randomInt(RECOVERY_ALPHABET.length)];
+  }
+  return `${code.slice(0, 5)}-${code.slice(5)}`;
+}
+
+/** Issues a fresh set of recovery codes, voiding any old ones. Run inside a transaction. */
+function replaceRecoveryCodes(userId: string): string[] {
+  const db = getDb();
+  const codes = Array.from({ length: RECOVERY_CODE_COUNT }, generateRecoveryCode);
+  db.run("DELETE FROM user_recovery_codes WHERE user_id = ?", [userId]);
+  const insert = db.prepare("INSERT INTO user_recovery_codes (user_id, code_hash) VALUES (?, ?)");
+  for (const code of codes) insert.run(userId, hashRecoveryCode(code));
+  return codes;
+}
+
+/**
+ * Signs in with an unused recovery code instead of an authenticator code,
+ * spending it. Shares the failure limit with authenticator codes.
+ */
+export function redeemRecoveryCode(userId: string, code: string): { ok: true } | MfaFailure {
+  if (!totpRow(userId)?.totp_enabled_at) return { ok: false, reason: "not_setup" };
+  if (isLocked(userId)) return { ok: false, reason: "locked" };
+
+  const used =
+    getDb().run(
+      "UPDATE user_recovery_codes SET used_at = datetime('now') WHERE user_id = ? AND code_hash = ? AND used_at IS NULL",
+      [userId, hashRecoveryCode(code)],
+    ).changes > 0;
+  if (!used) {
+    recordFailure(userId);
+    return { ok: false, reason: "invalid" };
+  }
+  failures.delete(userId);
+  return { ok: true };
+}
+
+/** The user's authenticator, as the profile page shows it. */
+export function getMfaStatus(userId: string) {
+  const row = totpRow(userId);
+  const unused = getDb()
+    .query("SELECT COUNT(*) AS n FROM user_recovery_codes WHERE user_id = ? AND used_at IS NULL")
+    .get(userId) as { n: number };
+  return {
+    enabled: !!row?.totp_enabled_at,
+    enabled_at: row?.totp_enabled_at ?? null,
+    required: getEnv().MFA_REQUIRED,
+    recovery_codes_remaining: unused.n,
+  };
+}
+
+/**
+ * Removes the user's authenticator and recovery codes; they set up a new one
+ * on next sign-in.
+ */
 export function resetMfa(userId: string): boolean {
   failures.delete(userId);
-  return (
-    getDb().run(
-      "UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = ?",
-      [userId],
-    ).changes === 1
-  );
+  const db = getDb();
+  return db.transaction(() => {
+    db.run("DELETE FROM user_recovery_codes WHERE user_id = ?", [userId]);
+    return (
+      db.run(
+        "UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = ?",
+        [userId],
+      ).changes === 1
+    );
+  })();
 }
 
 /** Test-only — clears failure counters. */

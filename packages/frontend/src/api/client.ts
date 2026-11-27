@@ -6,6 +6,9 @@ let authToken: string | null = null;
 let onUnauthorized: (() => void) | null = null;
 let onUpgradeRequired: ((message: string) => void) | null = null;
 
+// Requests whose 401 means a failed sign-in step, not an expired session.
+const SIGN_IN_PATHS = new Set(["/auth/login", "/auth/mfa/setup", "/auth/mfa/verify"]);
+
 export function setAuthToken(token: string | null) {
   authToken = token;
 }
@@ -68,7 +71,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     const msg =
       typeof data.error === "string" && data.error.length > 0 ? data.error : "Unauthorized";
     // A failed sign-in step isn't a lost session.
-    if (path !== "/auth/login" && !path.startsWith("/auth/mfa/")) {
+    if (!SIGN_IN_PATHS.has(path)) {
       authToken = null;
       if (onUnauthorized) onUnauthorized();
     }
@@ -150,11 +153,29 @@ export const api = {
       body: JSON.stringify({ mfa_token: mfaToken }),
     }),
 
-  mfaVerify: (mfaToken: string, code: string) =>
-    request<{ success: boolean; data: SessionData }>("/auth/mfa/verify", {
-      method: "POST",
-      body: JSON.stringify({ mfa_token: mfaToken, code }),
-    }),
+  /** `recovery_codes` comes back once, when this code finished setting up the app. */
+  mfaVerify: (mfaToken: string, input: { code: string } | { recovery_code: string }) =>
+    request<{ success: boolean; data: SessionData & { recovery_codes?: string[] } }>(
+      "/auth/mfa/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({ mfa_token: mfaToken, ...input }),
+      },
+    ),
+
+  getMfaStatus: () =>
+    request<{
+      success: boolean;
+      data: {
+        enabled: boolean;
+        enabled_at: string | null;
+        required: boolean;
+        recovery_codes_remaining: number;
+      };
+    }>("/auth/mfa"),
+
+  removeMfa: (password: string) =>
+    request("/auth/mfa/remove", { method: "POST", body: JSON.stringify({ password }) }),
 
   logout: () => request("/auth/logout", { method: "POST" }),
 

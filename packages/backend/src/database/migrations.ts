@@ -1187,6 +1187,25 @@ const MIGRATIONS: Migration[] = [
       addColumnIfMissing(db, "users", "totp_last_step", "INTEGER");
     },
   },
+  {
+    version: 37,
+    name: "user_recovery_codes",
+    up: (db) => {
+      // One-time codes for signing in without the authenticator app, issued
+      // when it is set up. Only SHA-256 hashes are stored; used_at marks a
+      // spent code.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS user_recovery_codes (
+          id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          code_hash TEXT NOT NULL,
+          used_at TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_recovery_codes_user ON user_recovery_codes(user_id);
+      `);
+    },
+  },
 ];
 
 export const LATEST_MIGRATION_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

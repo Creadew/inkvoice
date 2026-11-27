@@ -30,7 +30,16 @@ interface AuthState {
    * challenge still to pass (see verifyMfa).
    */
   login: (username: string, password: string) => Promise<MfaChallenge | null>;
-  verifyMfa: (mfaToken: string, code: string) => Promise<void>;
+  /**
+   * Authenticator step. Resolves null once signed in. When the code just set
+   * the app up, resolves with the new recovery codes instead and holds the
+   * session back until finishSignIn, so the codes can be shown first.
+   */
+  verifyMfa: (
+    mfaToken: string,
+    input: { code: string } | { recovery_code: string },
+  ) => Promise<string[] | null>;
+  finishSignIn: () => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
@@ -42,6 +51,13 @@ export const useAuthStore = create<AuthState>((set) => {
     set({ user: null, token: null, isLoading: false });
   });
 
+  const startSession = (token: string, user: User) => {
+    setAuthToken(token);
+    set({ user, token, isLoading: false });
+  };
+  // A session waiting on finishSignIn (see verifyMfa).
+  let heldSession: { token: string; user: User } | null = null;
+
   return {
     user: null,
     token: null,
@@ -52,16 +68,24 @@ export const useAuthStore = create<AuthState>((set) => {
       const { token, user, mfa_required, mfa_token } = res.data;
       if (mfa_required && mfa_token) return { step: mfa_required, token: mfa_token };
       if (!token || !user) throw new Error("Unexpected sign-in response");
-      setAuthToken(token);
-      set({ user, token, isLoading: false });
+      startSession(token, user);
       return null;
     },
 
-    verifyMfa: async (mfaToken: string, code: string) => {
-      const res = await api.mfaVerify(mfaToken, code);
-      const { token, user } = res.data;
-      setAuthToken(token);
-      set({ user, token, isLoading: false });
+    verifyMfa: async (mfaToken, input) => {
+      const res = await api.mfaVerify(mfaToken, input);
+      const { token, user, recovery_codes } = res.data;
+      if (recovery_codes?.length) {
+        heldSession = { token, user };
+        return recovery_codes;
+      }
+      startSession(token, user);
+      return null;
+    },
+
+    finishSignIn: () => {
+      if (heldSession) startSession(heldSession.token, heldSession.user);
+      heldSession = null;
     },
 
     logout: async () => {

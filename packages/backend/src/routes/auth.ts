@@ -12,7 +12,10 @@ import { sendEmail } from "../services/email.service";
 import { passwordResetEmail } from "../services/email-templates";
 import {
   beginEnrollment,
+  getMfaStatus,
   mfaStepFor,
+  redeemRecoveryCode,
+  resetMfa,
   signMfaChallenge,
   verifyMfaChallenge,
   verifyMfaCode,
@@ -20,7 +23,7 @@ import {
 import { getSystemMailSender } from "../services/system-mail";
 import type { User } from "../types/user";
 import { getEnv } from "../utils/env";
-import { hashPassword } from "../utils/password";
+import { hashPassword, verifyPassword } from "../utils/password";
 
 // Extension point: a deployment can override how password-reset links are
 // built (e.g. per-tenant subdomains). Returning null falls back to the
@@ -40,9 +43,14 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
-// Sets the session cookie and returns the token + user: the end of every
-// successful web password sign-in, with or without an authenticator step.
-async function startSession(c: Context, user: User, tenantId?: string) {
+// Sets the session cookie and returns the token + user (plus `extra`): the end
+// of every successful web password sign-in, with or without an authenticator.
+async function startSession(
+  c: Context,
+  user: User,
+  tenantId?: string,
+  extra?: Record<string, unknown>,
+) {
   const result = await createSession(user, tenantId);
   if (!result) {
     return c.json({ success: false, error: "Invalid credentials" }, 401);
@@ -68,7 +76,7 @@ async function startSession(c: Context, user: User, tenantId?: string) {
     resource_type: "user",
     resource_id: result.user.id,
   });
-  return c.json({ success: true, data: result });
+  return c.json({ success: true, data: { ...result, ...extra } });
 }
 
 auth.post("/login", rateLimiter, async (c) => {
@@ -98,9 +106,11 @@ auth.post("/login", rateLimiter, async (c) => {
 });
 
 const mfaSetupSchema = z.object({ mfa_token: z.string().min(1) });
+// Either an authenticator `code` or, without the app, a `recovery_code`.
 const mfaVerifySchema = z.object({
   mfa_token: z.string().min(1),
-  code: z.string().trim().min(1, "Code is required"),
+  code: z.string().trim().max(10).optional(),
+  recovery_code: z.string().trim().max(64).optional(),
 });
 
 const invalidChallenge = {
@@ -130,7 +140,12 @@ auth.post("/mfa/verify", rateLimiter, async (c) => {
   const userId = await verifyMfaChallenge(parsed.mfa_token, tenant?.id);
   if (!userId) return c.json(invalidChallenge, 401);
 
-  const result = verifyMfaCode(userId, parsed.code);
+  if (!parsed.code && !parsed.recovery_code) {
+    return c.json({ success: false, error: "Code is required", code: "VALIDATION_FAILED" }, 400);
+  }
+  const result = parsed.recovery_code
+    ? redeemRecoveryCode(userId, parsed.recovery_code)
+    : verifyMfaCode(userId, parsed.code ?? "");
   if (!result.ok) {
     if (result.reason === "locked") {
       return c.json(
@@ -146,7 +161,9 @@ auth.post("/mfa/verify", rateLimiter, async (c) => {
       return c.json({ success: false, error: "Authenticator is not set up" }, 400);
     }
     return c.json(
-      { success: false, error: "Invalid authentication code", code: "INVALID_MFA_CODE" },
+      parsed.recovery_code
+        ? { success: false, error: "Invalid recovery code", code: "INVALID_RECOVERY_CODE" }
+        : { success: false, error: "Invalid authentication code", code: "INVALID_MFA_CODE" },
       401,
     );
   }
@@ -156,16 +173,60 @@ auth.post("/mfa/verify", rateLimiter, async (c) => {
     .get(userId) as User | null;
   if (!user) return c.json(invalidChallenge, 401);
 
-  if (result.enrolled) {
+  // Set when this code just finished setup: the only time they're shown.
+  const recoveryCodes = "recoveryCodes" in result ? result.recoveryCodes : null;
+  if (recoveryCodes || parsed.recovery_code) {
     logActivity({
       user_id: user.id,
       user_name: user.username,
-      action: "mfa_enrolled",
+      action: recoveryCodes ? "mfa_enrolled" : "mfa_recovery_code_used",
       resource_type: "user",
       resource_id: user.id,
     });
   }
-  return startSession(c, user, tenant?.id);
+  return startSession(
+    c,
+    user,
+    tenant?.id,
+    recoveryCodes ? { recovery_codes: recoveryCodes } : undefined,
+  );
+});
+
+// The signed-in user's own authenticator, for the profile page.
+auth.get("/mfa", authMiddleware, (c) => {
+  return c.json({ success: true, data: getMfaStatus(c.get("userId")) });
+});
+
+const mfaRemoveSchema = z.object({ password: z.string().min(1, "Password is required") });
+
+// Removes the signed-in user's own authenticator (e.g. moving to a new phone);
+// they set up a new one at their next sign-in. Takes the password, and only a
+// web session: a leaked API token or phone session can't strip the factor.
+auth.post("/mfa/remove", authMiddleware, rateLimiter, async (c) => {
+  if (c.get("apiToken") || c.get("deviceSession")) {
+    return c.json(
+      { success: false, error: "Sign in on the web to change this", code: "FORBIDDEN" },
+      403,
+    );
+  }
+  const parsed = mfaRemoveSchema.parse(await c.req.json().catch(() => ({})));
+  const userId = c.get("userId");
+  const row = getDb()
+    .query("SELECT username, password_hash FROM users WHERE id = ? AND is_active = 1")
+    .get(userId) as { username: string; password_hash: string } | null;
+  if (!row || !(await verifyPassword(parsed.password, row.password_hash))) {
+    return c.json({ success: false, error: "Incorrect password", code: "INVALID_PASSWORD" }, 403);
+  }
+
+  resetMfa(userId);
+  logActivity({
+    user_id: userId,
+    user_name: row.username,
+    action: "mfa_removed",
+    resource_type: "user",
+    resource_id: userId,
+  });
+  return c.json({ success: true });
 });
 
 auth.post("/logout", (c) => {
